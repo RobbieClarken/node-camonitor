@@ -1,9 +1,9 @@
 extends layout
 
 block content
-  script(src='http://#{sioAddress}/socket.io/socket.io.js')
+  script(src='http://#{config.address}:#{config.sioPort}/socket.io/socket.io.js')
   script
-    var socket = io.connect('http://#{sioAddress}');
+    var socket = io.connect('http://#{config.address}:#{config.sioPort}');
     socket.on('value', function (data) {
       $('.name').each(function() {
         if($(this).val() === data['pvName']) {
@@ -12,17 +12,21 @@ block content
         }
       });
     });
+    function changePV(prevPVName, newPVName) {
+        socket.emit('change pv name', {
+                    prevPVName: prevPVName,
+                    newPVName: newPVName});
+    }
     $(document).ready(function(){
       $('.name').each(function() {
         $(this).data('prevPVName', $(this).val());
       });
       $('.name').change(function() {
-        console.log($(this).data('prevPVName'), $(this).val());
-        socket.emit('change pv name', {
-                    prevPVName: $(this).data('prevPVName'),
-                    newPVName: $(this).val()});
+        changePV($(this).data('prevPVName'),
+                 $(this).val());
         $(this).data('prevPVName', $(this).val());
       });
+      $('.name').val('SR11BCM01:CURRENT_MONITOR').change();
     });
   table
     tr
@@ -30,5 +34,5 @@ block content
       th Value
     tr
       td
-        input.name(value='SR11BCM01:CURRENT_MONITOR')
+        input.name
       td.value

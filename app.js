@@ -1,15 +1,15 @@
-var express = require('express')
+var config = require('./config')
+  , express = require('express')
   , routes = require('./routes')
-  , user = require('./routes/user')
   , http = require('http')
   , path = require('path')
   , epics = require('epics')
-  , io = require('socket.io').listen(7001);
+  , io = require('socket.io').listen(config.sioPort);
 
 var app = express();
 
 app.configure(function(){
-  app.set('port', 7000);
+  app.set('port', config.mainPort);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
   app.set('view options', {layout: true})
@@ -18,7 +18,7 @@ app.configure(function(){
   app.use(express.bodyParser());
   app.use(express.methodOverride());
   app.use(function(req, res, next) {
-    req.sioAddress = 'asapp06:7001';
+    req.config = config;
     next();
   });
   app.use(app.router);
@@ -72,8 +72,6 @@ io.sockets.on('connection', function(socket) {
     addPV(data['newPVName']);
   });
 });
-
-addPV('SR11BCM01:CURRENT_MONITOR');
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
