@@ -1,0 +1,34 @@
+extends layout
+
+block content
+  script(src='http://#{sioAddress}/socket.io/socket.io.js')
+  script
+    var socket = io.connect('http://#{sioAddress}');
+    socket.on('value', function (data) {
+      $('.name').each(function() {
+        if($(this).val() === data['pvName']) {
+          var row = $(this).closest('tr').children('.value');
+          row.html(data['value']);
+        }
+      });
+    });
+    $(document).ready(function(){
+      $('.name').each(function() {
+        $(this).data('prevPVName', $(this).val());
+      });
+      $('.name').change(function() {
+        console.log($(this).data('prevPVName'), $(this).val());
+        socket.emit('change pv name', {
+                    prevPVName: $(this).data('prevPVName'),
+                    newPVName: $(this).val()});
+        $(this).data('prevPVName', $(this).val());
+      });
+    });
+  table
+    tr
+      th PV
+      th Value
+    tr
+      td
+        input.name(value='SR11BCM01:CURRENT_MONITOR')
+      td.value
