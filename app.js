@@ -1,15 +1,13 @@
-var config = require('./config')
-  , express = require('express')
+var express = require('express')
   , routes = require('./routes')
-  , http = require('http')
   , path = require('path')
   , epics = require('epics')
-  , io = require('socket.io').listen(config.sioPort);
-
-var app = express();
+  , app = express()
+  , server = require('http').createServer(app)
+  , io = require('socket.io').listen(server);
 
 app.configure(function(){
-  app.set('port', config.mainPort);
+  app.set('port', 7000);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
   app.set('view options', {layout: true})
@@ -17,10 +15,6 @@ app.configure(function(){
   app.use(express.logger('dev'));
   app.use(express.bodyParser());
   app.use(express.methodOverride());
-  app.use(function(req, res, next) {
-    req.config = config;
-    next();
-  });
   app.use(app.router);
   app.use(express.static(path.join(__dirname, 'public')));
 });
@@ -73,6 +67,6 @@ io.sockets.on('connection', function(socket) {
   });
 });
 
-http.createServer(app).listen(app.get('port'), function(){
+server.listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });

@@ -1,9 +1,9 @@
 extends layout
 
 block content
-  script(src='http://#{config.address}:#{config.sioPort}/socket.io/socket.io.js')
+  script(src='/socket.io/socket.io.js')
   script
-    var socket = io.connect('http://#{config.address}:#{config.sioPort}');
+    var socket = io.connect(window.location.hostname+':'+window.location.port);
     socket.on('value', function (data) {
       $('.name').each(function() {
         if($(this).val() === data['pvName']) {
