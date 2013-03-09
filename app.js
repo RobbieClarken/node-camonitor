@@ -4,7 +4,7 @@ var express = require('express')
   , epics = require('epics')
   , app = express()
   , server = require('http').createServer(app)
-  , io = require('socket.io').listen(server);
+  , io = require('socket.io').listen(server, {'log level': 1});
 
 app.configure(function(){
   app.set('port', 7000);
@@ -32,7 +32,8 @@ function removePV(pvName) {
   if(pvInfo) {
     pvInfo.watchers -= 1;
     if(pvInfo.watchers === 0) {
-      // TODO: Clear channel
+      pvInfo.pv.disconnect();
+      delete pvs[pvName];
     }
   }
 }
