@@ -1,73 +1,71 @@
-var express = require('express')
-  , routes = require('./routes')
-  , path = require('path')
-  , epics = require('epics')
-  , app = express()
-  , server = require('http').createServer(app)
-  , io = require('socket.io').listen(server, {'log level': 1});
+var epics = require('epics')
+  , http = require('http')
+  , sio = require('socket.io');
 
-app.configure(function(){
-  app.set('port', 7000);
-  app.set('views', __dirname + '/views');
-  app.set('view engine', 'jade');
-  app.set('view options', {layout: true})
-  app.use(express.favicon());
-  app.use(express.logger('dev'));
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(app.router);
-  app.use(express.static(path.join(__dirname, 'public')));
+var server = http.createServer(function(request, response) {
+  if(request.url === '/favicon.ico') {
+    response.writeHead(200, {'Content-Type': 'image/x-icon'});
+    response.end();
+  } else if(request.url === '/') {
+    response.writeHead(200, {'Content-Type': 'text/plain'});
+    response.end('Try /<PV>');
+  } else {
+    response.writeHead(200, {'Content-Type': 'text/html'});
+    var pvName = request.url.substring(1);
+    var page = '<!DOCTYPE html>' +
+               '<html>' + 
+               '  <head>' +
+               '    <script src="/socket.io/socket.io.js"></script>' +
+               '    <script>' +
+               '      var socket = io.connect();' +
+               '      socket.emit("subscribe", "' + pvName + '");' +
+               '      socket.on("value", function(data) {' +
+               '        document.body.innerHTML += data + "<br>";' +
+               '      });' +
+               '    </script>' +
+               '  </head>' +
+               '  <body></body>' +
+               '</html>';
+    response.end(page);
+  }
 });
-
-app.configure('development', function(){
-  app.use(express.errorHandler());
-});
-
-app.get('/', routes.index);
 
 var pvs = {};
 
-function removePV(pvName) {
-  var pvInfo = pvs[pvName];
-  if(pvInfo) {
-    pvInfo.watchers -= 1;
-    if(pvInfo.watchers === 0) {
-      pvInfo.pv.disconnect();
-      delete pvs[pvName];
-    }
-  }
+function addPV(pvName) {
+  var pv = new epics.Channel(pvName);
+  pv.on('value', function(value) {
+    io.sockets.in(pvName).emit('value', value);
+  });
+  pv.connect(function(err) {
+    pv.monitor();
+  });
+  pvs[pvName] = pv;
 }
 
-function addPV(pvName) {
-  var pvInfo = pvs[pvName];
-  if(pvInfo) {
-    pvInfo.watchers += 1;
-  } else {
-    var pv = new epics.Channel(pvName);
-    pv.on('value', function(data) {
-      console.log(data);
-      io.sockets.emit('value', {pvName: pv.pvName, value:  data});
-    });
-    pv.connect(function(err) {
-      console.log('connect:', err);
-      if(!err) {
-        pv.monitor();
+function removePV(pvName) {
+  pvs[pvName].disconnect();
+  delete pvs[pvName];
+}
+
+var io = sio.listen(server, {'log level': 1});
+io.sockets.on('connection', function(socket) {
+  socket.on('subscribe', function(pvName) {
+    socket.join(pvName);
+    socket.set('pvName', pvName);
+    if (!(pvName in pvs)) {
+      addPV(pvName);
+    }
+  });
+  socket.on('disconnect', function() {
+    socket.get('pvName', function(err, pvName) {
+      // Check if disconnecting user is the
+      // last subscriber to the pv
+      if(io.sockets.clients(pvName).length === 1) {
+        removePV(pvName);
       }
     });
-    pvs[pvName] = {
-      watchers: 1,
-      pv: pv
-    };
-  }
-}
-
-io.sockets.on('connection', function(socket) {
-  socket.on('change pv name', function(data) {
-    removePV(data['prevPVName']);
-    addPV(data['newPVName']);
   });
 });
 
-server.listen(app.get('port'), function(){
-  console.log("Express server listening on port " + app.get('port'));
-});
+server.listen(7000);

@@ -9,3 +9,6 @@ cd node-camonitor
 npm install
 ```
 
+Usage
+-----
+Start the server with `npm start` and then go to `http://localhost:7000/<PV>`.
